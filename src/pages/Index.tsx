@@ -4,6 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import Icon from '@/components/ui/icon';
 import { toast } from '@/hooks/use-toast';
 
@@ -18,6 +22,30 @@ interface Notification {
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isAddWebinarOpen, setIsAddWebinarOpen] = useState(false);
+  const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
+  
+  const [profile, setProfile] = useState({
+    name: 'Анна Иванова',
+    email: 'student@eduplatform.com',
+    phone: '+7 (999) 123-45-67',
+    city: 'Москва, Россия'
+  });
+  
+  const [newWebinar, setNewWebinar] = useState({
+    title: '',
+    date: '',
+    time: '',
+    duration: '',
+    speaker: ''
+  });
+  
+  const [newAssignment, setNewAssignment] = useState({
+    title: '',
+    course: '',
+    deadline: ''
+  });
   const [notifications, setNotifications] = useState<Notification[]>([
     {
       id: 1,
@@ -75,7 +103,7 @@ const Index = () => {
     }
   ];
 
-  const webinars = [
+  const [webinars, setWebinars] = useState([
     {
       id: 1,
       title: 'React продвинутые паттерны',
@@ -106,9 +134,9 @@ const Index = () => {
       status: 'recorded',
       viewers: 1024
     }
-  ];
+  ]);
 
-  const assignments = [
+  const [assignments, setAssignments] = useState([
     {
       id: 1,
       title: 'Хуки в React',
@@ -141,7 +169,7 @@ const Index = () => {
       status: 'checked',
       score: 88
     }
-  ];
+  ]);
 
   const markAsRead = (id: number) => {
     setNotifications(notifications.map(n => 
@@ -166,6 +194,69 @@ const Index = () => {
 
   const showToast = (title: string, description: string) => {
     toast({ title, description });
+  };
+
+  const handleSaveProfile = () => {
+    setIsEditProfileOpen(false);
+    toast({ title: 'Профиль обновлен', description: 'Ваши данные успешно сохранены' });
+  };
+
+  const handleAddWebinar = () => {
+    if (!newWebinar.title || !newWebinar.date || !newWebinar.time) {
+      toast({ title: 'Ошибка', description: 'Заполните все обязательные поля' });
+      return;
+    }
+    
+    const webinar = {
+      id: Date.now(),
+      title: newWebinar.title,
+      date: newWebinar.date,
+      time: newWebinar.time,
+      duration: newWebinar.duration || '1 час',
+      speaker: newWebinar.speaker || profile.name,
+      status: 'upcoming' as const,
+      viewers: 0
+    };
+    
+    setWebinars([webinar, ...webinars]);
+    setNewWebinar({ title: '', date: '', time: '', duration: '', speaker: '' });
+    setIsAddWebinarOpen(false);
+    toast({ title: 'Вебинар добавлен', description: 'Новый вебинар успешно создан' });
+  };
+
+  const handleAddAssignment = () => {
+    if (!newAssignment.title || !newAssignment.course || !newAssignment.deadline) {
+      toast({ title: 'Ошибка', description: 'Заполните все поля' });
+      return;
+    }
+    
+    const deadline = new Date(newAssignment.deadline);
+    const today = new Date();
+    const daysLeft = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    const assignment = {
+      id: Date.now(),
+      title: newAssignment.title,
+      course: newAssignment.course,
+      deadline: deadline.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }),
+      status: 'pending' as const,
+      daysLeft
+    };
+    
+    setAssignments([assignment, ...assignments]);
+    setNewAssignment({ title: '', course: '', deadline: '' });
+    setIsAddAssignmentOpen(false);
+    toast({ title: 'Задание добавлено', description: 'Новое задание успешно создано' });
+  };
+
+  const handleDeleteWebinar = (id: number) => {
+    setWebinars(webinars.filter(w => w.id !== id));
+    toast({ title: 'Вебинар удален', description: 'Вебинар успешно удален' });
+  };
+
+  const handleDeleteAssignment = (id: number) => {
+    setAssignments(assignments.filter(a => a.id !== id));
+    toast({ title: 'Задание удалено', description: 'Задание успешно удалено' });
   };
 
   return (
@@ -362,9 +453,86 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="webinars" className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Вебинары
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Вебинары
+              </h2>
+              <Dialog open={isAddWebinarOpen} onOpenChange={setIsAddWebinarOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                    <Icon name="Plus" size={16} className="mr-2" />
+                    Добавить вебинар
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Новый вебинар</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="webinar-title">Название *</Label>
+                      <Input
+                        id="webinar-title"
+                        value={newWebinar.title}
+                        onChange={(e) => setNewWebinar({ ...newWebinar, title: e.target.value })}
+                        placeholder="React продвинутые паттерны"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="webinar-date">Дата *</Label>
+                        <Input
+                          id="webinar-date"
+                          value={newWebinar.date}
+                          onChange={(e) => setNewWebinar({ ...newWebinar, date: e.target.value })}
+                          placeholder="15 декабря"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="webinar-time">Время *</Label>
+                        <Input
+                          id="webinar-time"
+                          value={newWebinar.time}
+                          onChange={(e) => setNewWebinar({ ...newWebinar, time: e.target.value })}
+                          placeholder="15:00"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="webinar-duration">Длительность</Label>
+                        <Input
+                          id="webinar-duration"
+                          value={newWebinar.duration}
+                          onChange={(e) => setNewWebinar({ ...newWebinar, duration: e.target.value })}
+                          placeholder="2 часа"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="webinar-speaker">Спикер</Label>
+                        <Input
+                          id="webinar-speaker"
+                          value={newWebinar.speaker}
+                          onChange={(e) => setNewWebinar({ ...newWebinar, speaker: e.target.value })}
+                          placeholder={profile.name}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setIsAddWebinarOpen(false)}>
+                        Отмена
+                      </Button>
+                      <Button 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        onClick={handleAddWebinar}
+                      >
+                        Создать
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="grid gap-4">
               {webinars.map((webinar) => (
                 <Card key={webinar.id} className="p-6 hover:shadow-lg transition-all duration-300 border-purple-100">
@@ -413,36 +581,46 @@ const Index = () => {
                             </div>
                           )}
                         </div>
-                        <Button
-                          className={
-                            webinar.status === 'live'
-                              ? 'bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600'
-                              : webinar.status === 'upcoming'
-                              ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
-                              : 'bg-gray-500 hover:bg-gray-600'
-                          }
-                          onClick={() => showToast(
-                            webinar.status === 'recorded' ? 'Запись' : 'Вебинар',
-                            webinar.status === 'recorded' ? 'Открываю запись вебинара...' : 'Вы записаны на вебинар!'
-                          )}
-                        >
-                          {webinar.status === 'live' ? (
-                            <>
-                              <Icon name="Play" size={16} className="mr-2" />
-                              Смотреть сейчас
-                            </>
-                          ) : webinar.status === 'upcoming' ? (
-                            <>
-                              <Icon name="Calendar" size={16} className="mr-2" />
-                              Записаться
-                            </>
-                          ) : (
-                            <>
-                              <Icon name="PlayCircle" size={16} className="mr-2" />
-                              Смотреть запись
-                            </>
-                          )}
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            className={
+                              webinar.status === 'live'
+                                ? 'bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600'
+                                : webinar.status === 'upcoming'
+                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                                : 'bg-gray-500 hover:bg-gray-600'
+                            }
+                            onClick={() => showToast(
+                              webinar.status === 'recorded' ? 'Запись' : 'Вебинар',
+                              webinar.status === 'recorded' ? 'Открываю запись вебинара...' : 'Вы записаны на вебинар!'
+                            )}
+                          >
+                            {webinar.status === 'live' ? (
+                              <>
+                                <Icon name="Play" size={16} className="mr-2" />
+                                Смотреть сейчас
+                              </>
+                            ) : webinar.status === 'upcoming' ? (
+                              <>
+                                <Icon name="Calendar" size={16} className="mr-2" />
+                                Записаться
+                              </>
+                            ) : (
+                              <>
+                                <Icon name="PlayCircle" size={16} className="mr-2" />
+                                Смотреть запись
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="border-red-300 text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteWebinar(webinar.id)}
+                          >
+                            <Icon name="Trash2" size={16} />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -452,9 +630,64 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="assignments" className="space-y-6 animate-fade-in">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Домашние задания
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Домашние задания
+              </h2>
+              <Dialog open={isAddAssignmentOpen} onOpenChange={setIsAddAssignmentOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                    <Icon name="Plus" size={16} className="mr-2" />
+                    Добавить задание
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Новое задание</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="assignment-title">Название *</Label>
+                      <Input
+                        id="assignment-title"
+                        value={newAssignment.title}
+                        onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                        placeholder="Хуки в React"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="assignment-course">Курс *</Label>
+                      <Input
+                        id="assignment-course"
+                        value={newAssignment.course}
+                        onChange={(e) => setNewAssignment({ ...newAssignment, course: e.target.value })}
+                        placeholder="React & TypeScript"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="assignment-deadline">Дедлайн *</Label>
+                      <Input
+                        id="assignment-deadline"
+                        type="date"
+                        value={newAssignment.deadline}
+                        onChange={(e) => setNewAssignment({ ...newAssignment, deadline: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setIsAddAssignmentOpen(false)}>
+                        Отмена
+                      </Button>
+                      <Button 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        onClick={handleAddAssignment}
+                      >
+                        Создать
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="grid gap-4">
               {assignments.map((assignment) => (
                 <Card key={assignment.id} className="p-6 hover:shadow-lg transition-all duration-300 border-purple-100">
@@ -494,24 +727,34 @@ const Index = () => {
                           </div>
                         )}
                       </div>
-                      {assignment.status === 'pending' ? (
-                        <Button
-                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                          onClick={() => showToast('Задание', 'Открываю задание...')}
-                        >
-                          <Icon name="FileEdit" size={16} className="mr-2" />
-                          Выполнить задание
-                        </Button>
-                      ) : (
+                      <div className="flex gap-2">
+                        {assignment.status === 'pending' ? (
+                          <Button
+                            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                            onClick={() => showToast('Задание', 'Открываю задание...')}
+                          >
+                            <Icon name="FileEdit" size={16} className="mr-2" />
+                            Выполнить задание
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                            onClick={() => showToast('Результаты', 'Открываю результаты проверки...')}
+                          >
+                            <Icon name="Eye" size={16} className="mr-2" />
+                            Посмотреть результаты
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
-                          className="border-purple-300 text-purple-700 hover:bg-purple-50"
-                          onClick={() => showToast('Результаты', 'Открываю результаты проверки...')}
+                          size="icon"
+                          className="border-red-300 text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeleteAssignment(assignment.id)}
                         >
-                          <Icon name="Eye" size={16} className="mr-2" />
-                          Посмотреть результаты
+                          <Icon name="Trash2" size={16} />
                         </Button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </Card>
@@ -645,11 +888,11 @@ const Index = () => {
             <Card className="p-8 border-purple-100">
               <div className="flex items-start gap-6 mb-8">
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-3xl font-bold">
-                  АИ
+                  {profile.name.split(' ').map(n => n[0]).join('')}
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-2xl font-bold mb-2">Анна Иванова</h2>
-                  <p className="text-gray-600 mb-4">student@eduplatform.com</p>
+                  <h2 className="text-2xl font-bold mb-2">{profile.name}</h2>
+                  <p className="text-gray-600 mb-4">{profile.email}</p>
                   <div className="flex items-center gap-4">
                     <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
                       Премиум аккаунт
@@ -659,10 +902,65 @@ const Index = () => {
                     </Badge>
                   </div>
                 </div>
-                <Button variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50">
-                  <Icon name="Settings" size={16} className="mr-2" />
-                  Редактировать
-                </Button>
+                <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="border-purple-300 text-purple-700 hover:bg-purple-50">
+                      <Icon name="Settings" size={16} className="mr-2" />
+                      Редактировать
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Редактировать профиль</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 mt-4">
+                      <div>
+                        <Label htmlFor="profile-name">Имя</Label>
+                        <Input
+                          id="profile-name"
+                          value={profile.name}
+                          onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="profile-email">Email</Label>
+                        <Input
+                          id="profile-email"
+                          type="email"
+                          value={profile.email}
+                          onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="profile-phone">Телефон</Label>
+                        <Input
+                          id="profile-phone"
+                          value={profile.phone}
+                          onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="profile-city">Город</Label>
+                        <Input
+                          id="profile-city"
+                          value={profile.city}
+                          onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setIsEditProfileOpen(false)}>
+                          Отмена
+                        </Button>
+                        <Button 
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          onClick={handleSaveProfile}
+                        >
+                          Сохранить
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
@@ -672,22 +970,22 @@ const Index = () => {
                     <div className="flex items-center gap-3 text-sm">
                       <Icon name="User" size={16} className="text-gray-400" />
                       <span className="text-gray-600">Имя:</span>
-                      <span className="font-medium">Анна Иванова</span>
+                      <span className="font-medium">{profile.name}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Icon name="Mail" size={16} className="text-gray-400" />
                       <span className="text-gray-600">Email:</span>
-                      <span className="font-medium">student@eduplatform.com</span>
+                      <span className="font-medium">{profile.email}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Icon name="Phone" size={16} className="text-gray-400" />
                       <span className="text-gray-600">Телефон:</span>
-                      <span className="font-medium">+7 (999) 123-45-67</span>
+                      <span className="font-medium">{profile.phone}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
                       <Icon name="MapPin" size={16} className="text-gray-400" />
                       <span className="text-gray-600">Город:</span>
-                      <span className="font-medium">Москва, Россия</span>
+                      <span className="font-medium">{profile.city}</span>
                     </div>
                   </div>
                 </div>
