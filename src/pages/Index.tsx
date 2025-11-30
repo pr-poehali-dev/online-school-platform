@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import Icon from '@/components/ui/icon';
 import { toast } from '@/hooks/use-toast';
 
@@ -20,11 +22,39 @@ interface Notification {
   read: boolean;
 }
 
+interface Student {
+  id: number;
+  name: string;
+  email: string;
+  registeredDate: string;
+  coursesAccess: string[];
+  avatar?: string;
+}
+
+interface StudentWork {
+  id: number;
+  studentId: number;
+  studentName: string;
+  assignmentId: number;
+  assignmentTitle: string;
+  submittedDate: string;
+  status: 'pending' | 'checked';
+  score?: number;
+  comment?: string;
+  workUrl?: string;
+}
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState('home');
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isAddWebinarOpen, setIsAddWebinarOpen] = useState(false);
   const [isAddAssignmentOpen, setIsAddAssignmentOpen] = useState(false);
+  const [isRegisterStudentOpen, setIsRegisterStudentOpen] = useState(false);
+  const [isCheckWorkOpen, setIsCheckWorkOpen] = useState(false);
+  const [selectedWork, setSelectedWork] = useState<StudentWork | null>(null);
+  const [workScore, setWorkScore] = useState('');
+  const [workComment, setWorkComment] = useState('');
+  const [userRole] = useState<'teacher' | 'student'>('teacher');
   
   const [profile, setProfile] = useState({
     name: 'Анна Иванова',
@@ -38,7 +68,16 @@ const Index = () => {
     date: '',
     time: '',
     duration: '',
-    speaker: ''
+    speaker: '',
+    videoUrl: '',
+    isLive: false,
+    courseAccess: 'free'
+  });
+  
+  const [newStudent, setNewStudent] = useState({
+    name: '',
+    email: '',
+    coursesAccess: [] as string[]
   });
   
   const [newAssignment, setNewAssignment] = useState({
@@ -112,7 +151,11 @@ const Index = () => {
       duration: '2 часа',
       speaker: 'Анна Петрова',
       status: 'upcoming',
-      viewers: 0
+      viewers: 0,
+      videoUrl: '',
+      isLive: false,
+      courseAccess: 'React & TypeScript',
+      assignmentId: 1
     },
     {
       id: 2,
@@ -122,7 +165,11 @@ const Index = () => {
       duration: '1.5 часа',
       speaker: 'Иван Смирнов',
       status: 'live',
-      viewers: 243
+      viewers: 243,
+      videoUrl: 'https://www.youtube.com/watch?v=example',
+      isLive: true,
+      courseAccess: 'React & TypeScript',
+      assignmentId: 3
     },
     {
       id: 3,
@@ -132,7 +179,11 @@ const Index = () => {
       duration: '2 часа',
       speaker: 'Мария Козлова',
       status: 'recorded',
-      viewers: 1024
+      viewers: 1024,
+      videoUrl: 'https://www.youtube.com/watch?v=example2',
+      isLive: false,
+      courseAccess: 'free',
+      assignmentId: 4
     }
   ]);
 
@@ -143,7 +194,9 @@ const Index = () => {
       course: 'React & TypeScript',
       deadline: '3 декабря 2024',
       status: 'pending',
-      daysLeft: 2
+      daysLeft: 2,
+      webinarId: 1,
+      description: 'Создайте компонент используя useState и useEffect'
     },
     {
       id: 2,
@@ -151,7 +204,9 @@ const Index = () => {
       course: 'Node.js Backend',
       deadline: '5 декабря 2024',
       status: 'pending',
-      daysLeft: 4
+      daysLeft: 4,
+      webinarId: null,
+      description: 'Разработайте REST API с использованием Express'
     },
     {
       id: 3,
@@ -159,7 +214,9 @@ const Index = () => {
       course: 'React & TypeScript',
       deadline: '28 ноября 2024',
       status: 'checked',
-      score: 95
+      score: 95,
+      webinarId: 2,
+      description: 'Типизируйте React компонент'
     },
     {
       id: 4,
@@ -167,7 +224,80 @@ const Index = () => {
       course: 'UI/UX Design',
       deadline: '25 ноября 2024',
       status: 'checked',
-      score: 88
+      score: 88,
+      webinarId: 3,
+      description: 'Создайте кнопку с анимацией'
+    }
+  ]);
+  
+  const [students, setStudents] = useState<Student[]>([
+    {
+      id: 1,
+      name: 'Иван Петров',
+      email: 'ivan@example.com',
+      registeredDate: '15 октября 2024',
+      coursesAccess: ['React & TypeScript', 'Node.js Backend']
+    },
+    {
+      id: 2,
+      name: 'Мария Сидорова',
+      email: 'maria@example.com',
+      registeredDate: '20 октября 2024',
+      coursesAccess: ['React & TypeScript', 'UI/UX Design']
+    },
+    {
+      id: 3,
+      name: 'Алексей Козлов',
+      email: 'alex@example.com',
+      registeredDate: '1 ноября 2024',
+      coursesAccess: ['Node.js Backend']
+    }
+  ]);
+  
+  const [studentWorks, setStudentWorks] = useState<StudentWork[]>([
+    {
+      id: 1,
+      studentId: 1,
+      studentName: 'Иван Петров',
+      assignmentId: 3,
+      assignmentTitle: 'TypeScript Basics',
+      submittedDate: '27 ноября 2024',
+      status: 'checked',
+      score: 95,
+      comment: 'Отличная работа! Все типы правильно определены.',
+      workUrl: 'https://github.com/student/typescript-task'
+    },
+    {
+      id: 2,
+      studentId: 2,
+      studentName: 'Мария Сидорова',
+      assignmentId: 4,
+      assignmentTitle: 'UI компоненты',
+      submittedDate: '24 ноября 2024',
+      status: 'checked',
+      score: 88,
+      comment: 'Хорошая анимация, но можно улучшить производительность',
+      workUrl: 'https://codepen.io/student/button-animation'
+    },
+    {
+      id: 3,
+      studentId: 1,
+      studentName: 'Иван Петров',
+      assignmentId: 1,
+      assignmentTitle: 'Хуки в React',
+      submittedDate: '1 декабря 2024',
+      status: 'pending',
+      workUrl: 'https://github.com/student/react-hooks'
+    },
+    {
+      id: 4,
+      studentId: 3,
+      studentName: 'Алексей Козлов',
+      assignmentId: 2,
+      assignmentTitle: 'REST API разработка',
+      submittedDate: '2 декабря 2024',
+      status: 'pending',
+      workUrl: 'https://github.com/student/express-api'
     }
   ]);
 
@@ -214,12 +344,16 @@ const Index = () => {
       time: newWebinar.time,
       duration: newWebinar.duration || '1 час',
       speaker: newWebinar.speaker || profile.name,
-      status: 'upcoming' as const,
-      viewers: 0
+      status: newWebinar.isLive ? ('live' as const) : ('upcoming' as const),
+      viewers: 0,
+      videoUrl: newWebinar.videoUrl,
+      isLive: newWebinar.isLive,
+      courseAccess: newWebinar.courseAccess,
+      assignmentId: null
     };
     
     setWebinars([webinar, ...webinars]);
-    setNewWebinar({ title: '', date: '', time: '', duration: '', speaker: '' });
+    setNewWebinar({ title: '', date: '', time: '', duration: '', speaker: '', videoUrl: '', isLive: false, courseAccess: 'free' });
     setIsAddWebinarOpen(false);
     toast({ title: 'Вебинар добавлен', description: 'Новый вебинар успешно создан' });
   };
@@ -258,6 +392,55 @@ const Index = () => {
     setAssignments(assignments.filter(a => a.id !== id));
     toast({ title: 'Задание удалено', description: 'Задание успешно удалено' });
   };
+
+  const handleRegisterStudent = () => {
+    if (!newStudent.name || !newStudent.email || newStudent.coursesAccess.length === 0) {
+      toast({ title: 'Ошибка', description: 'Заполните все поля и выберите хотя бы один курс' });
+      return;
+    }
+    
+    const student: Student = {
+      id: Date.now(),
+      name: newStudent.name,
+      email: newStudent.email,
+      registeredDate: new Date().toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' }),
+      coursesAccess: newStudent.coursesAccess
+    };
+    
+    setStudents([...students, student]);
+    setNewStudent({ name: '', email: '', coursesAccess: [] });
+    setIsRegisterStudentOpen(false);
+    toast({ title: 'Студент зарегистрирован', description: `${student.name} успешно добавлен на платформу` });
+  };
+
+  const handleCheckWork = () => {
+    if (!selectedWork || !workScore) {
+      toast({ title: 'Ошибка', description: 'Укажите оценку' });
+      return;
+    }
+    
+    const updatedWorks = studentWorks.map(work => 
+      work.id === selectedWork.id 
+        ? { ...work, status: 'checked' as const, score: parseInt(workScore), comment: workComment }
+        : work
+    );
+    
+    setStudentWorks(updatedWorks);
+    setIsCheckWorkOpen(false);
+    setSelectedWork(null);
+    setWorkScore('');
+    setWorkComment('');
+    toast({ title: 'Работа проверена', description: 'Оценка и комментарий сохранены' });
+  };
+
+  const openCheckWork = (work: StudentWork) => {
+    setSelectedWork(work);
+    setWorkScore(work.score?.toString() || '');
+    setWorkComment(work.comment || '');
+    setIsCheckWorkOpen(true);
+  };
+
+  const pendingWorksCount = studentWorks.filter(w => w.status === 'pending').length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
@@ -301,7 +484,7 @@ const Index = () => {
 
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-7 mb-8 bg-white/50 backdrop-blur-sm p-1">
+          <TabsList className="grid w-full grid-cols-9 mb-8 bg-white/50 backdrop-blur-sm p-1">
             <TabsTrigger value="home" className="flex items-center gap-2">
               <Icon name="Home" size={16} />
               <span className="hidden sm:inline">Главная</span>
@@ -318,6 +501,23 @@ const Index = () => {
               <Icon name="ClipboardList" size={16} />
               <span className="hidden sm:inline">Задания</span>
             </TabsTrigger>
+            {userRole === 'teacher' && (
+              <>
+                <TabsTrigger value="students" className="flex items-center gap-2">
+                  <Icon name="Users" size={16} />
+                  <span className="hidden sm:inline">Студенты</span>
+                </TabsTrigger>
+                <TabsTrigger value="check-works" className="flex items-center gap-2 relative">
+                  <Icon name="CheckSquare" size={16} />
+                  <span className="hidden sm:inline">Проверка</span>
+                  {pendingWorksCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-gradient-to-r from-pink-500 to-orange-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {pendingWorksCount}
+                    </span>
+                  )}
+                </TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="statistics" className="flex items-center gap-2">
               <Icon name="BarChart3" size={16} />
               <span className="hidden sm:inline">Статистика</span>
@@ -412,6 +612,44 @@ const Index = () => {
                     </div>
                   </Card>
                 ))}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent flex items-center gap-2">
+                Расписание недели 🐱
+              </h2>
+              <div className="grid gap-3">
+                {['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'].map((day, index) => {
+                  const dayWebinars = webinars.filter((_, i) => i % 7 === index).slice(0, 1);
+                  const catEmojis = ['😺', '😸', '😹', '😻', '😼', '😽', '🙀'];
+                  return (
+                    <Card key={day} className="p-4 hover:shadow-lg transition-all duration-300 border-purple-100">
+                      <div className="flex items-center gap-4">
+                        <div className="text-4xl">{catEmojis[index]}</div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg mb-1">{day}</h3>
+                          {dayWebinars.length > 0 ? (
+                            <div className="flex items-center gap-4 text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <Icon name="Clock" size={14} />
+                                <span>{dayWebinars[0].time}</span>
+                              </div>
+                              <span>{dayWebinars[0].title}</span>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">Выходной - отдыхаем! 😴</p>
+                          )}
+                        </div>
+                        {dayWebinars.length > 0 && (
+                          <Badge className="bg-purple-100 text-purple-700 border-0">
+                            {dayWebinars[0].duration}
+                          </Badge>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           </TabsContent>
@@ -517,6 +755,43 @@ const Index = () => {
                           placeholder={profile.name}
                         />
                       </div>
+                    </div>
+                    <Separator />
+                    <div>
+                      <Label htmlFor="webinar-video">Ссылка на видео / эфир</Label>
+                      <Input
+                        id="webinar-video"
+                        value={newWebinar.videoUrl}
+                        onChange={(e) => setNewWebinar({ ...newWebinar, videoUrl: e.target.value })}
+                        placeholder="https://youtube.com/watch?v=..."
+                      />
+                      <p className="text-xs text-gray-500 mt-1">YouTube, Twitch, или прямая ссылка на видео</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="webinar-course">Доступ к курсу</Label>
+                      <Select value={newWebinar.courseAccess} onValueChange={(value) => setNewWebinar({ ...newWebinar, courseAccess: value })}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Выберите курс" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Бесплатный доступ</SelectItem>
+                          <SelectItem value="React & TypeScript">React & TypeScript</SelectItem>
+                          <SelectItem value="Node.js Backend">Node.js Backend</SelectItem>
+                          <SelectItem value="UI/UX Design">UI/UX Design</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="webinar-live"
+                        checked={newWebinar.isLive}
+                        onChange={(e) => setNewWebinar({ ...newWebinar, isLive: e.target.checked })}
+                        className="w-4 h-4 text-purple-600"
+                      />
+                      <Label htmlFor="webinar-live" className="cursor-pointer">
+                        🔴 Это прямой эфир (LIVE)
+                      </Label>
                     </div>
                     <div className="flex gap-2 justify-end">
                       <Button variant="outline" onClick={() => setIsAddWebinarOpen(false)}>
@@ -1024,6 +1299,243 @@ const Index = () => {
                 </div>
               </div>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="students" className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Студенты курса
+              </h2>
+              <Dialog open={isRegisterStudentOpen} onOpenChange={setIsRegisterStudentOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600">
+                    <Icon name="UserPlus" size={16} className="mr-2" />
+                    Зарегистрировать студента
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Регистрация студента</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="student-name">Имя *</Label>
+                      <Input
+                        id="student-name"
+                        value={newStudent.name}
+                        onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                        placeholder="Иван Петров"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="student-email">Email *</Label>
+                      <Input
+                        id="student-email"
+                        type="email"
+                        value={newStudent.email}
+                        onChange={(e) => setNewStudent({ ...newStudent, email: e.target.value })}
+                        placeholder="ivan@example.com"
+                      />
+                    </div>
+                    <div>
+                      <Label>Доступ к курсам *</Label>
+                      <div className="space-y-2 mt-2">
+                        {courses.map((course) => (
+                          <div key={course.id} className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              id={`course-${course.id}`}
+                              checked={newStudent.coursesAccess.includes(course.title)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setNewStudent({ ...newStudent, coursesAccess: [...newStudent.coursesAccess, course.title] });
+                                } else {
+                                  setNewStudent({ ...newStudent, coursesAccess: newStudent.coursesAccess.filter(c => c !== course.title) });
+                                }
+                              }}
+                              className="w-4 h-4 text-purple-600"
+                            />
+                            <Label htmlFor={`course-${course.id}`} className="cursor-pointer">
+                              {course.title}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setIsRegisterStudentOpen(false)}>
+                        Отмена
+                      </Button>
+                      <Button 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        onClick={handleRegisterStudent}
+                      >
+                        Зарегистрировать
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <div className="grid gap-4">
+              {students.map((student) => (
+                <Card key={student.id} className="p-6 hover:shadow-lg transition-all duration-300 border-purple-100">
+                  <div className="flex items-start gap-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                      {student.name.split(' ').map(n => n[0]).join('')}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-xl mb-2">{student.name}</h3>
+                      <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Icon name="Mail" size={14} />
+                          <span>{student.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Icon name="Calendar" size={14} />
+                          <span>Зарегистрирован: {student.registeredDate}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {student.coursesAccess.map((course) => (
+                          <Badge key={course} className="bg-purple-100 text-purple-700 border-0">
+                            <Icon name="BookOpen" size={12} className="mr-1" />
+                            {course}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="check-works" className="space-y-6 animate-fade-in">
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Проверка работ
+            </h2>
+            <div className="grid gap-4">
+              {studentWorks.map((work) => (
+                <Card key={work.id} className={`p-6 hover:shadow-lg transition-all duration-300 ${
+                  work.status === 'pending' ? 'border-orange-300 bg-orange-50/30' : 'border-purple-100'
+                }`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="font-bold text-xl">{work.assignmentTitle}</h3>
+                        {work.status === 'pending' ? (
+                          <Badge className="bg-gradient-to-r from-orange-500 to-pink-500 text-white border-0">
+                            <Icon name="Clock" size={12} className="mr-1" />
+                            Ожидает проверки
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-700 border-0">
+                            <Icon name="CheckCircle" size={12} className="mr-1" />
+                            Проверено - {work.score}/100
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Icon name="User" size={14} />
+                          <span>Студент: {work.studentName}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Icon name="Calendar" size={14} />
+                          <span>Сдано: {work.submittedDate}</span>
+                        </div>
+                        {work.workUrl && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Icon name="Link" size={14} className="text-purple-600" />
+                            <a href={work.workUrl} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline">
+                              {work.workUrl}
+                            </a>
+                          </div>
+                        )}
+                        {work.status === 'checked' && work.comment && (
+                          <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+                            <p className="text-sm text-gray-700">
+                              <strong>Комментарий:</strong> {work.comment}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                          onClick={() => openCheckWork(work)}
+                        >
+                          <Icon name="Edit" size={16} className="mr-2" />
+                          {work.status === 'pending' ? 'Проверить работу' : 'Изменить оценку'}
+                        </Button>
+                        {work.workUrl && (
+                          <Button
+                            variant="outline"
+                            className="border-purple-300 text-purple-700 hover:bg-purple-50"
+                            onClick={() => window.open(work.workUrl, '_blank')}
+                          >
+                            <Icon name="ExternalLink" size={16} className="mr-2" />
+                            Открыть работу
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+            
+            <Dialog open={isCheckWorkOpen} onOpenChange={setIsCheckWorkOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Проверка работы</DialogTitle>
+                </DialogHeader>
+                {selectedWork && (
+                  <div className="space-y-4 mt-4">
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">Задание:</p>
+                      <p className="font-semibold">{selectedWork.assignmentTitle}</p>
+                      <p className="text-sm text-gray-600 mt-2 mb-1">Студент:</p>
+                      <p className="font-semibold">{selectedWork.studentName}</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="work-score">Оценка (0-100) *</Label>
+                      <Input
+                        id="work-score"
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={workScore}
+                        onChange={(e) => setWorkScore(e.target.value)}
+                        placeholder="85"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="work-comment">Комментарий к работе</Label>
+                      <Textarea
+                        id="work-comment"
+                        value={workComment}
+                        onChange={(e) => setWorkComment(e.target.value)}
+                        placeholder="Отличная работа! Обратите внимание на..."
+                        rows={4}
+                      />
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="outline" onClick={() => setIsCheckWorkOpen(false)}>
+                        Отмена
+                      </Button>
+                      <Button 
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        onClick={handleCheckWork}
+                      >
+                        Сохранить оценку
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </TabsContent>
 
           <TabsContent value="notifications" className="space-y-4 animate-fade-in">
